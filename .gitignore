@@ -1,0 +1,47 @@
+# Gradle build files and folders
+.gradle/
+build/
+*/build/
+
+# Local Android Studio config
+local.properties
+
+# Android Studio/IntelliJ IDEA IDE files
+.idea/
+*.iml
+
+# Caches and logs
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.DS_Store
+*.log
+*.tmp
+
+# Native and external build folders
+.externalNativeBuild/
+.cxx/
+captures/
+
+# APKs, keystores, binaries
+*.apk
+*.ap_
+*.jks
+*.keystore
+*.dex
+*.class
+
+# Output folders/legacy
+gen/
+bin/
+out/
+
+# OS files
+Thumbs.db
+
+# Others (customize if есть специфичные файлы)
+*.swp
+*.swo
