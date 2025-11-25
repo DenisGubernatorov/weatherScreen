@@ -70,5 +70,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.runner)
     testImplementation(libs.junit)
+    implementation(libs.accompanist.swiperefresh)
+    implementation(libs.compose.shimmer)
 
 }
