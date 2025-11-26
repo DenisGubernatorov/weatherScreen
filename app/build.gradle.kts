@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.secrets.gradle.plugin)
 }
 
 android {
@@ -12,17 +13,21 @@ android {
 
     defaultConfig {
         applicationId = "com.weatherscreen"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+
+        val apiKey: String = providers.gradleProperty("WEATHER_API_KEY").getOrElse("fallback_key")
+        buildConfigField("String", "WEATHER_API_KEY", "\"$apiKey\"")
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
 
@@ -32,6 +37,10 @@ android {
     }
 
 
+    secrets {
+        propertiesFileName = "local.properties"
+
+    }
 }
 
 dependencies {
@@ -72,5 +81,7 @@ dependencies {
     testImplementation(libs.junit)
     implementation(libs.accompanist.swiperefresh)
     implementation(libs.compose.shimmer)
+    implementation(libs.okhttp.logging)
+
 
 }
