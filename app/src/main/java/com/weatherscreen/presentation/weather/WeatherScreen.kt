@@ -38,9 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,6 +51,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.valentinilk.shimmer.shimmer
+import com.weatherscreen.R
 import com.weatherscreen.domain.model.DayItem
 import com.weatherscreen.domain.model.HourItem
 import com.weatherscreen.domain.model.WeatherDomainModel
@@ -58,14 +61,13 @@ fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var isManuallyRefreshing by remember { mutableStateOf(false) }
-
+    //var isManuallyRefreshing by remember { mutableStateOf(false) }
+    var pullRefreshInProgress by remember { mutableStateOf(false) }
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    LaunchedEffect(isManuallyRefreshing) {
-        if (isManuallyRefreshing) {
-            viewModel.onEvent(WeatherEvent.Refresh)
-            isManuallyRefreshing = false
+    LaunchedEffect(state.uiState) {
+        if (state.uiState !is WeatherUiState.Loading) {
+            pullRefreshInProgress = false
         }
     }
 
@@ -79,55 +81,63 @@ fun WeatherScreen(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color(0xFF1E3A5F),
-                                Color(0xFF0F1E36)
+                                colorResource(R.color.background_start),
+                                colorResource(R.color.background_end)
                             )
                         )
                     )
                     .pointerInput(Unit) {
                         detectVerticalDragGestures { _, dragAmount ->
-                            if (dragAmount > 120f) {
-                                isManuallyRefreshing = true
+                            if (dragAmount > 120f && !pullRefreshInProgress
+                                && state.uiState is WeatherUiState.Success
+                            ) {
+                                pullRefreshInProgress = true
+                                viewModel.onEvent(WeatherEvent.Refresh)
                             }
                         }
                     }
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxxlarge)))
 
-                when (val uiState = state.uiState) {
-                    is WeatherUiState.Success -> {
-                        val data = uiState.data
+                when {
+                    pullRefreshInProgress || state.uiState is WeatherUiState.Loading -> {
+                        WeatherLoadingSkeleton()
+                    }
+
+                    state.uiState is WeatherUiState.Success -> {
+                        val data = (state.uiState as WeatherUiState.Success).data
 
                         CityName(city = data.cityName)
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xlarge)))
 
                         CurrentTemperature(data = data)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_medium)))
 
                         ConditionText(text = data.conditionText)
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxlarge)))
 
                         DetailCards(data = data)
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxxlarge)))
 
                         SectionTitle("Почасовой прогноз")
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xlarge)))
                         HourlyForecast(hourly = data.hourlyList)
-                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxxlarge)))
 
                         SectionTitle("Прогноз на 3 дня")
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xlarge)))
 
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_xlarge)))
+                                .background(colorResource(R.color.text_white_80).copy(alpha = 0.08f))
                         ) {
                             LazyColumn(
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                contentPadding = PaddingValues(dimensionResource(R.dimen.spacing_xlarge)),
+                                verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge))
                             ) {
                                 items(data.dailyList) { day ->
                                     DailyForecastItem(item = day)
@@ -136,46 +146,46 @@ fun WeatherScreen(
                         }
                     }
 
-                    WeatherUiState.Loading -> {
-                        WeatherLoadingSkeleton()
-                    }
-
-                    is WeatherUiState.Error -> {
-                        WeatherLoadingSkeleton()
+                    state.uiState is WeatherUiState.Error -> {
+                        WeatherLoadingSkeleton() // или отдельный экран ошибки, если хочешь
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxxlarge)))
             }
         }
 
-        if (isManuallyRefreshing) {
+        /*if (isManuallyRefreshing) {
             WeatherLoadingSkeleton()
-        }
+        }*/
 
         if (state.uiState is WeatherUiState.Error) {
+            val errorState = state.uiState as WeatherUiState.Error
             AlertDialog(
                 onDismissRequest = { },
                 title = {
                     Text(
-                        "Ошибка загрузки",
-                        color = Color.White,
+                        text = errorState.message.asString(),
+                        color = colorResource(R.color.text_white),
                         fontWeight = FontWeight.Medium
                     )
                 },
                 text = {
                     Text(
-                        (state.uiState as WeatherUiState.Error).message,
-                        color = Color.White.copy(0.9f)
+                        text = errorState.message.asString(),
+                        color = colorResource(R.color.text_white_90)
                     )
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.onEvent(WeatherEvent.Refresh) }) {
-                        Text("Повторить", color = Color(0xFF64B5F6))
+                        Text(
+                            stringResource(R.string.retry),
+                            color = colorResource(R.color.retry_blue)
+                        )
                     }
                 },
-                containerColor = Color(0xFF1E3A5F),
-                shape = RoundedCornerShape(16.dp)
+                containerColor = colorResource(R.color.dialog_container),
+                shape = RoundedCornerShape(dimensionResource(R.dimen.spacing_xlarge))
             )
         }
     }
@@ -187,50 +197,83 @@ private fun LandscapeStub(uiState: WeatherUiState) {
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF1E3A5F), Color(0xFF0F1E36)))
+                Brush.verticalGradient(
+                    listOf(
+                        colorResource(R.color.background_start),
+                        colorResource(R.color.background_end)
+                    )
+                )
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Экран в разработке",
+            text = stringResource(R.string.landscape_stub_title),
             fontSize = 32.sp,
-            color = Color.White,
+            color = colorResource(R.color.text_white),
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_xxxlarge)))
 
         when (uiState) {
             is WeatherUiState.Success -> {
                 val data = uiState.data
-                Text(
-                    text = """
-                        Сохранённые данные (портрет → альбом):
-                        • Город: ${data.cityName}
-                        • Температура: ${data.currentTempC}°
-                        • Ощущается как: ${data.feelsLikeC}°
-                        • Погода: ${data.conditionText}
-                    """.trimIndent(),
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 18.sp,
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.landscape_stub_saved_data),
+                        color = colorResource(R.color.text_white_90),
+                        fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.landscape_stub_city, data.cityName),
+                        color = colorResource(R.color.text_white_80),
+                        fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.landscape_stub_temp, data.currentTempC),
+                        color = colorResource(R.color.text_white_80),
+                        fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(R.string.landscape_stub_feels_like, data.feelsLikeC),
+                        color = colorResource(R.color.text_white_80),
+                        fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.landscape_stub_condition,
+                            data.conditionText
+                        ),
+                        color = colorResource(R.color.text_white_80),
+                        fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             is WeatherUiState.Error -> {
                 Text(
-                    text = "Ошибка: ${uiState.message}",
-                    color = Color(0xFFFF6B6B),
-                    fontSize = 18.sp
+                    text = stringResource(R.string.landscape_stub_error, uiState.message),
+                    color = colorResource(R.color.error_red),
+                    fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                    textAlign = TextAlign.Center
                 )
             }
 
             WeatherUiState.Loading -> {
                 Text(
-                    text = "Загрузка данных...",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 18.sp
+                    text = stringResource(R.string.landscape_stub_loading),
+                    color = colorResource(R.color.text_white_70),
+                    fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -242,7 +285,7 @@ private fun CityName(city: String) {
     Text(
         text = city,
         fontSize = 24.sp,
-        color = Color.White.copy(0.9f),
+        color = colorResource(R.color.text_white_90),
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center
     )
@@ -256,17 +299,17 @@ private fun CurrentTemperature(data: WeatherDomainModel) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "${data.currentTempC}°",
-            fontSize = 110.sp,
+            text = stringResource(R.string.temp_format, data.currentTempC),
+            fontSize = dimensionResource(R.dimen.text_temp).value.sp,
             fontWeight = FontWeight.Light,
-            color = Color.White,
+            color = colorResource(R.color.text_white),
             lineHeight = 100.sp
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(dimensionResource(R.dimen.spacing_xlarge)))
         AsyncImage(
             model = data.iconUrl.replace("64x64", "128x128"),
             contentDescription = null,
-            modifier = Modifier.size(130.dp)
+            modifier = Modifier.size(dimensionResource(R.dimen.icon_current_size))
         )
     }
 }
@@ -275,8 +318,8 @@ private fun CurrentTemperature(data: WeatherDomainModel) {
 private fun ConditionText(text: String) {
     Text(
         text = text,
-        fontSize = 28.sp,
-        color = Color.White,
+        fontSize = dimensionResource(R.dimen.text_condition).value.sp,
+        color = colorResource(R.color.text_white),
         fontWeight = FontWeight.Medium,
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center
@@ -287,40 +330,44 @@ private fun ConditionText(text: String) {
 private fun DetailCards(data: WeatherDomainModel) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_large))
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge))
         ) {
             DetailCard(
-                title = "Ощущается",
-                value = "${data.feelsLikeC}°",
+                title = stringResource(R.string.feels_like),
+                value = stringResource(R.string.temp_format, data.feelsLikeC),
                 modifier = Modifier.weight(1f)
             )
             DetailCard(
-                title = "Ветер",
-                value = "${data.windKph} км/ч",
+                title = stringResource(R.string.wind),
+                value = stringResource(R.string.wind_speed_format, data.windKph),
                 modifier = Modifier.weight(1f)
             )
-            DetailCard(title = "Направление", value = data.windDir, modifier = Modifier.weight(1f))
+            DetailCard(
+                title = stringResource(R.string.wind_direction),
+                value = data.windDir,
+                modifier = Modifier.weight(1f)
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge))
         ) {
             DetailCard(
-                title = "Влажность",
-                value = "${data.humidityPercent}%",
+                title = stringResource(R.string.humidity),
+                value = stringResource(R.string.humidity_format, data.humidityPercent),
                 modifier = Modifier.weight(1f)
             )
             DetailCard(
-                title = "Давление",
-                value = "${data.pressureMb} мб",
+                title = stringResource(R.string.pressure),
+                value = stringResource(R.string.pressure_format, data.pressureMb),
                 modifier = Modifier.weight(1f)
             )
             DetailCard(
-                title = "UV-индекс",
+                title = stringResource(R.string.uv_index),
                 value = data.uvIndex.toString(),
                 modifier = Modifier.weight(1f)
             )
@@ -333,27 +380,27 @@ private fun DetailCard(title: String, value: String, modifier: Modifier = Modifi
     Card(
         modifier = modifier
             .wrapContentHeight(align = Alignment.CenterVertically)
-            .defaultMinSize(minHeight = 64.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF3A4A6B).copy(alpha = 0.7f)),
-        shape = RoundedCornerShape(20.dp)
+            .defaultMinSize(minHeight = dimensionResource(R.dimen.spacing_small)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.detail_card)),
+        shape = RoundedCornerShape(dimensionResource(R.dimen.corner_radius_xlarge))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(dimensionResource(R.dimen.spacing_large)),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = value,
-                color = Color.White,
+                color = colorResource(R.color.text_white),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 17.sp,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(dimensionResource(R.dimen.spacing_small)))
             Text(
                 text = title,
-                color = Color.White.copy(0.8f),
-                fontSize = 12.sp,
+                color = colorResource(R.color.text_white_80),
+                fontSize = dimensionResource(R.dimen.text_detail_title).value.sp,
                 textAlign = TextAlign.Center
             )
         }
@@ -364,8 +411,8 @@ private fun DetailCard(title: String, value: String, modifier: Modifier = Modifi
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        color = Color.White,
-        fontSize = 20.sp,
+        color = colorResource(R.color.text_white),
+        fontSize = dimensionResource(R.dimen.text_section_title).value.sp,
         fontWeight = FontWeight.Medium,
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center
@@ -375,8 +422,8 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun HourlyForecast(hourly: List<HourItem>) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge)),
+        contentPadding = PaddingValues(horizontal = dimensionResource(R.dimen.spacing_medium)),
         modifier = Modifier.fillMaxWidth()
     ) {
         items(hourly) { HourlyItem(it) }
@@ -385,19 +432,26 @@ private fun HourlyForecast(hourly: List<HourItem>) {
 
 @Composable
 private fun HourlyItem(item: HourItem) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp)) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(dimensionResource(R.dimen.daily_card_height))
+    ) {
         Text(
             text = item.time,
-            color = Color.White.copy(0.8f),
-            fontSize = 14.sp,
+            color = colorResource(R.color.text_white_80),
+            fontSize = dimensionResource(R.dimen.text_hourly_time).value.sp,
             textAlign = TextAlign.Center
         )
-        AsyncImage(model = item.iconUrl, contentDescription = null, modifier = Modifier.size(48.dp))
+        AsyncImage(
+            model = item.iconUrl,
+            contentDescription = null,
+            modifier = Modifier.size(dimensionResource(R.dimen.spacing_medium))
+        )
         Text(
-            text = "${item.tempC}°",
-            color = Color.White,
+            text = stringResource(R.string.temp_format, item.tempC),
+            color = colorResource(R.color.text_white),
             fontWeight = FontWeight.Medium,
-            fontSize = 16.sp
+            fontSize = dimensionResource(R.dimen.text_detail_value).value.sp
         )
     }
 }
@@ -406,34 +460,42 @@ private fun HourlyItem(item: HourItem) {
 private fun DailyForecastItem(item: DayItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(20.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = colorResource(R.color.text_white_80).copy(
+                alpha = 0.08f
+            )
+        ),
+        shape = RoundedCornerShape(dimensionResource(R.dimen.corner_radius_xlarge))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(dimensionResource(R.dimen.spacing_xlarge)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.dayShort,
-                    color = Color.White,
+                    color = colorResource(R.color.text_white),
                     fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
+                    fontSize = dimensionResource(R.dimen.text_detail_value).value.sp
                 )
-                Text(text = item.date, color = Color.White.copy(0.7f), fontSize = 14.sp)
+                Text(
+                    text = item.date,
+                    color = colorResource(R.color.text_white_70),
+                    fontSize = dimensionResource(R.dimen.text_hourly_time).value.sp
+                )
             }
             AsyncImage(
                 model = item.iconUrl,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(dimensionResource(R.dimen.spacing_medium))
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(dimensionResource(R.dimen.spacing_xlarge)))
             Text(
-                text = "${item.maxTempC}° / ${item.minTempC}°",
-                color = Color.White,
-                fontSize = 18.sp,
+                text = stringResource(R.string.daily_temp_format, item.maxTempC, item.minTempC),
+                color = colorResource(R.color.text_white),
+                fontSize = dimensionResource(R.dimen.text_daily_temp).value.sp,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -446,14 +508,14 @@ private fun WeatherLoadingSkeleton() {
         modifier = Modifier
             .fillMaxSize()
             .shimmer(),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xxlarge))
     ) {
         Spacer(
             Modifier
-                .height(32.dp)
+                .height(dimensionResource(R.dimen.spacing_xxxlarge))
                 .width(160.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(0.15f))
+                .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_medium)))
+                .background(colorResource(R.color.skeleton))
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
         )
@@ -467,15 +529,15 @@ private fun WeatherLoadingSkeleton() {
                 Modifier
                     .height(110.dp)
                     .width(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(0.15f))
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_large)))
+                    .background(colorResource(R.color.skeleton))
             )
             Spacer(Modifier.width(20.dp))
             Spacer(
                 Modifier
-                    .size(130.dp)
+                    .size(dimensionResource(R.dimen.icon_current_size))
                     .clip(CircleShape)
-                    .background(Color.White.copy(0.15f))
+                    .background(colorResource(R.color.skeleton))
             )
         }
 
@@ -483,33 +545,33 @@ private fun WeatherLoadingSkeleton() {
             Modifier
                 .height(36.dp)
                 .width(220.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(0.15f))
+                .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_medium)))
+                .background(colorResource(R.color.skeleton))
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
         )
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_large))
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge))) {
                 repeat(3) {
                     Spacer(
                         Modifier
                             .size(106.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color.White.copy(0.15f))
+                            .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_radius_xlarge)))
+                            .background(colorResource(R.color.skeleton))
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_xlarge))) {
                 repeat(3) {
                     Spacer(
                         Modifier
                             .size(106.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color.White.copy(0.15f))
+                            .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_radius_xlarge)))
+                            .background(colorResource(R.color.skeleton))
                     )
                 }
             }
@@ -517,10 +579,10 @@ private fun WeatherLoadingSkeleton() {
 
         Spacer(
             Modifier
-                .height(28.dp)
+                .height(dimensionResource(R.dimen.spacing_medium))
                 .width(200.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(0.15f))
+                .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_medium)))
+                .background(colorResource(R.color.skeleton))
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
         )
@@ -528,14 +590,14 @@ private fun WeatherLoadingSkeleton() {
             Modifier
                 .height(100.dp)
                 .fillMaxWidth()
-                .background(Color.White.copy(0.08f))
+                .background(colorResource(R.color.forecast_card))
         )
         Spacer(
             Modifier
-                .height(28.dp)
+                .height(dimensionResource(R.dimen.spacing_medium))
                 .width(160.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(0.15f))
+                .clip(RoundedCornerShape(dimensionResource(R.dimen.spacing_medium)))
+                .background(colorResource(R.color.skeleton))
                 .fillMaxWidth()
                 .wrapContentWidth(Alignment.CenterHorizontally)
         )
@@ -543,9 +605,9 @@ private fun WeatherLoadingSkeleton() {
             Spacer(
                 Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(0.08f))
+                    .height(dimensionResource(R.dimen.daily_card_height))
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_radius_xlarge)))
+                    .background(colorResource(R.color.forecast_card))
             )
         }
     }

@@ -7,4 +7,16 @@
 	<color name="teal_700">#FF018786</color>
 	<color name="black">#FF000000</color>
 	<color name="white">#FFFFFFFF</color>
+	<color name="background_start">#FF1E3A5F</color>
+	<color name="background_end">#FF0F1E36</color>
+	<color name="text_white">#FFFFFFFF</color>
+	<color name="text_white_90">#E6FFFFFF</color>
+	<color name="text_white_80">#CCFFFFFF</color>
+	<color name="text_white_70">#B3FFFFFF</color>
+	<color name="dialog_container">#FF1E3A5F</color>
+	<color name="retry_blue">#FF64B5F6</color>
+	<color name="error_red">#FFFF6B6B</color>
+	<color name="detail_card">#B33A4A6B</color>
+	<color name="skeleton">#26FFFFFF</color>
+	<color name="forecast_card">#14FFFFFF</color>
 </resources>

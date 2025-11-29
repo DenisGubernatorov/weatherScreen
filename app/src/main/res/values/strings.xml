@@ -1,3 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="app_name">WeatherScreen</string>
+	<string name="error_loading">Ошибка загрузки</string>
+	<string name="retry">Повторить</string>
+	<string name="feels_like">Ощущается</string>
+	<string name="wind">Ветер</string>
+	<string name="wind_direction">Направление</string>
+	<string name="humidity">Влажность</string>
+	<string name="pressure">Давление</string>
+	<string name="uv_index">UV-индекс</string>
+	<string name="hourly_forecast">Прогноз по часам</string>
+	<string name="daily_forecast">Прогноз на дни</string>
+	<string name="temp_format">%s°</string>
+	<string name="wind_speed_format">%s км/ч</string>
+	<string name="humidity_format">%s%%</string>
+	<string name="pressure_format">%s мб</string>
+	<string name="daily_temp_format">%s° / %s°</string>
+	<string name="error_network">Ошибка сети</string>
+	<string name="error_no_internet">Нет интернета</string>
+	<string name="error_loading_weather">Ошибка загрузки погоды</string>
+	<string name="landscape_stub_title">Экран в разработке</string>
+	<string name="landscape_stub_saved_data">Сохранённые данные (портрет → альбом):</string>
+	<string name="landscape_stub_city">• Город: %1$s</string>
+	<string name="landscape_stub_temp">• Температура: %1$s°</string>
+	<string name="landscape_stub_feels_like">• Ощущается как: %1$s°</string>
+	<string name="landscape_stub_condition">• Погода: %1$s</string>
+	<string name="landscape_stub_loading">Загрузка данных…</string>
+	<string name="landscape_stub_error">Ошибка: %1$s</string>
 </resources>
